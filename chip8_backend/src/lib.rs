@@ -1,3 +1,5 @@
+use rand::random;
+
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 
@@ -68,11 +70,12 @@ impl Emu {
         self.sp += 1;
     }
 
-    pub fn pop(&mut self) {
+    pub fn pop(&mut self) -> u16 {
         if self.sp == 0 {
             panic!("pop");
         }
         self.sp -= 1;
+        return self.stack[self.sp as usize];
     }
 
     pub fn tick(&mut self) {
@@ -103,6 +106,124 @@ impl Emu {
     }
 
     fn execute(&mut self, op: u16) {
-        
+        let digit1 = (0xF000 & op) >> 12;
+        let digit2 = (0x0F00 & op) >> 8;
+        let digit3 = (0x00F0 & op) >> 4;
+        let digit4 = 0x000F & op;
+
+        match (digit1, digit2, digit3, digit4) {
+            (0, 0, 0, 0) => return,
+            (0, 0, 0xE, 0) => {
+                self.screen.fill(false);
+            },
+            (0, 0, 0xE, 0xE) => {
+                self.pc = self.pop();
+            },
+            (1, _, _, _) => {
+                self.pc = 0x0FFF & op; // self.pc = (digit2 << 8) | (digit3 << 4) | digit4;
+            }
+            (2, _, _, _) => {
+                self.push(self.pc);
+                self.pc = 0x0FFF & op; // self.pc = (digit2 << 8) | (digit3 << 4) | digit4;
+            }
+            (3, _, _, _) => {
+                if self.v_reg[digit2 as usize] == (0x00FF & op) as u8 {
+                    self.pc += 2;
+                }
+            },
+            (4, _, _, _) => {
+                if self.v_reg[digit2 as usize] != (0x00FF & op) as u8 {
+                    self.pc += 2;
+                }
+            },
+            (5, _, _, 0) => {
+                if self.v_reg[digit2 as usize] == self.v_reg[digit3 as usize] {
+                    self.pc += 2;
+                }
+            },
+            (6, _, _, _) => {
+                self.v_reg[digit2 as usize] = (0x00FF & op) as u8;
+            },
+            (7, _, _, _) => {
+                self.v_reg[digit2 as usize] = self.v_reg[digit2 as usize].wrapping_add((0x00FF & op) as u8);
+            },
+            (8, _, _, 0) => {
+                self.v_reg[digit2 as usize] = self.v_reg[digit3 as usize];
+            },
+            (8, _, _, 1) => {
+                self.v_reg[digit2 as usize] |= self.v_reg[digit3 as usize];
+            },
+            (8, _, _, 2) => {
+                self.v_reg[digit2 as usize] &= self.v_reg[digit3 as usize];
+            },
+            (8, _, _, 3) => {
+                self.v_reg[digit2 as usize] ^= self.v_reg[digit3 as usize];
+            },
+            (8, _, _, 4) => {
+                let (sum, carry) = self.v_reg[digit2 as usize].overflowing_add(self.v_reg[digit3 as usize]);
+                self.v_reg[digit2 as usize] = sum;
+                self.v_reg[0xF] = if carry {1} else {0};
+            },
+            (8, _, _, 5) => {
+                let (diff, borrow) = self.v_reg[digit2 as usize].overflowing_sub(self.v_reg[digit3 as usize]);
+                self.v_reg[digit2 as usize] = diff;
+                self.v_reg[0xF] = if borrow {0} else {1};
+            },
+            (8, _, _, 6) => {
+                self.v_reg[0xF] = self.v_reg[digit2 as usize] & 1;
+                self.v_reg[digit2 as usize] >>= 1;
+            },
+            (8, _, _, 7) => {
+                let (diff, borrow) = self.v_reg[digit3 as usize].overflowing_sub(self.v_reg[digit2 as usize]);
+                self.v_reg[digit2 as usize] = diff;
+                self.v_reg[0xF] = if borrow {0} else {1};
+            },
+            (8, _, _, 0xE) => {
+                self.v_reg[0xF] = if self.v_reg[digit2 as usize] & 0x0080 > 0 {1} else {0};
+                self.v_reg[digit2 as usize] <<= 1;
+            },
+            (9, _, _, 0) => {
+                if self.v_reg[digit2 as usize] != self.v_reg[digit3 as usize] {
+                    self.pc += 2;
+                }
+            },
+            (0xA, _, _, 0) => {
+                self.i_reg = 0x0FFF & op;
+            },
+            (0xB, _, _, 0) => {
+                self.pc = self.v_reg[0] as u16 + (0x0FFF & op);
+            },
+            (0xC, _, _, 0) => {
+                self.v_reg[digit2 as usize] = random::<u8>() & (0x00FF & op) as u8;
+            },
+            (0xD, _, _, 0) => {
+                let x_coord = self.v_reg[digit2 as usize];
+                let y_coord = self.v_reg[digit3 as usize];
+                let n_rows = digit4;
+
+                let mut flipped = false;
+                for line in 0..n_rows {
+                    let addr = self.i_reg + line;
+                    let pixels = self.ram[addr as usize];
+
+                    let mask = 0b1000_0000;
+                    for i in 0..8 {
+                        if pixels & (mask >> i) > 0 {
+                            let x = (x_coord + i) as usize % SCREEN_WIDTH;
+                            let y = (y_coord + line as u8) as usize % SCREEN_HEIGHT;
+
+                            let idx = y * SCREEN_WIDTH + x;
+
+                            flipped |= self.screen[idx];
+
+                            self.screen[idx] ^= true;
+                        }
+                    }
+                }
+
+                self.v_reg[0xF] = if flipped {1} else {0};
+            },
+            (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op)
+        }
     }
 }
