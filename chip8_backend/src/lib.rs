@@ -4,13 +4,13 @@ use rand::random;
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 
+const START_ADDR: u16 = 0x200;
+
 const RAM_SIZE: usize = 4096;
 const NUM_REGS: usize = 16;
 const STACK_SIZE: usize = 16;
 const NUM_KEYS: usize = 16;
 const FONTSET_SIZE: usize = 80;
-
-const START_ADDR: u16 = 0x200;
 
 const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
@@ -240,12 +240,12 @@ impl Emu {
                 self.v_reg[0xF] = if flipped {1} else {0};
             },
             (0xE, _, 9, 0xE) => {
-                if self.keys[digit2 as usize] {
+                if self.keys[self.v_reg[digit2 as usize] as usize] {
                     self.pc += 2;
                 }
             },
             (0xE, _, 0xA, 1) => {
-                if !self.keys[digit2 as usize] {
+                if !self.keys[self.v_reg[digit2 as usize] as usize] {
                     self.pc += 2;
                 }
             },

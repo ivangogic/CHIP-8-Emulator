@@ -1,7 +1,9 @@
 use std::env;
 use std::fs::File;
 use std::io::Read;
+
 use chip8_backend::*;
+
 use sdl2::event::Event;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
@@ -66,12 +68,13 @@ fn main() {
                 _ => ()
             }
 
-            for _cnt in 0..TICKS_PER_FRAME {
-                chip8.tick();
-            }
-            chip8.tick_timers();
-            draw_screen(&chip8, &mut canvas);
         }
+
+        for _cnt in 0..TICKS_PER_FRAME {
+            chip8.tick();
+        }
+        chip8.tick_timers();
+        draw_screen(&chip8, &mut canvas);
     }
 }
 
