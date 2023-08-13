@@ -223,6 +223,62 @@ impl Emu {
 
                 self.v_reg[0xF] = if flipped {1} else {0};
             },
+            (0xE, _, 9, 0xE) => {
+                if self.keys[digit2 as usize] {
+                    self.pc += 2;
+                }
+            },
+            (0xF, _, 0, 7) => {
+                self.v_reg[digit2 as usize] = self.dt;
+            },
+            (0xF, _, 0, 0xA) => {
+                let mut pressed = false;
+                for i in 0..NUM_KEYS {
+                    if self.keys[i] {
+                        self.v_reg[digit2 as usize] = i as u8;
+                        pressed = true;
+                        break;
+                    }
+                }
+
+                if !pressed {
+                    self.pc -= 2;
+                }
+            },
+            (0xF, _, 1, 5) => {
+                self.dt = self.v_reg[digit2 as usize];
+            },
+            (0xF, _, 1, 8) => {
+                self.st = self.v_reg[digit2 as usize];
+            },
+            (0xF, _, 1, 0xE) => {
+                self.i_reg = self.i_reg.wrapping_add(self.v_reg[digit2 as usize] as u16);
+            },
+            (0xF, _, 2, 9) => {
+                self.i_reg = 5 * self.v_reg[digit2 as usize] as u16;
+            },
+            (0xF, _, 3, 3) => {
+                let x = self.v_reg[digit2 as usize];
+                let h = x / 100;
+                let t = (x / 10) % 10;
+                let o = x % 10;
+
+                self.ram[self.i_reg as usize] = h;
+                self.ram[(self.i_reg + 1) as usize] = t;
+                self.ram[(self.i_reg + 2) as usize] = o;
+            },
+            (0xF, _, 5, 5) => {
+                let x = (digit2 + 1) as usize;
+                for i in 0..x {
+                    self.ram[self.i_reg as usize + i] = self.v_reg[i];
+                }
+            },
+            (0xF, _, 6, 5) => {
+                let x = (digit2 + 1) as usize;
+                for i in 0..x {
+                    self.v_reg[i] = self.ram[self.i_reg as usize + i];
+                }
+            },
             (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op)
         }
     }
