@@ -308,6 +308,10 @@ impl Emu {
         return &self.screen;
     }
 
+    pub fn get_sound(&self) -> bool {
+        return self.st > 0;
+    }
+
     pub fn keypress(&mut self, idx: usize, pressed: bool) {
         self.keys[idx] = pressed;
     }

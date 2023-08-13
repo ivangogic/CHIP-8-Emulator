@@ -1,6 +1,8 @@
 use std::env;
 use std::fs::File;
 use std::io::Read;
+use std::io::BufReader;
+use std::io::Cursor;
 
 use chip8_backend::*;
 
@@ -10,6 +12,8 @@ use sdl2::rect::Rect;
 use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::keyboard::Keycode;
+
+use rodio::{Decoder, OutputStream, source::Source};
 
 
 const SCALE: u32 = 15;
@@ -25,8 +29,8 @@ fn main() {
         println!("Usage: cargo run path/to/game");
         return;
     }
-
     let mut rom = File::open(&args[1]).expect("Unable to open file");
+
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -44,10 +48,18 @@ fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
 
+    let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+
+    let mut data = Vec::new();
+    let mut sound_file = BufReader::new(File::open("../assets/sound.wav").unwrap());
+    sound_file.read_to_end(&mut data).unwrap();
+    
+
     let mut chip8 = Emu::new();
     let mut buffer = Vec::new();
     rom.read_to_end(&mut buffer).unwrap();
     chip8.load(&buffer);
+
 
     'gameloop: loop {
         for event in event_pump.poll_iter() {
@@ -74,6 +86,13 @@ fn main() {
             chip8.tick();
         }
         chip8.tick_timers();
+
+        if chip8.get_sound() {
+            let cloned_data = data.clone();
+            let buffered_file = Cursor::new(cloned_data);
+            let source = Decoder::new(buffered_file).unwrap();
+            stream_handle.play_raw(source.convert_samples()).unwrap();
+        }
         draw_screen(&chip8, &mut canvas);
     }
 }
@@ -103,18 +122,18 @@ fn key2btn(key: Keycode) -> Option<usize> {
         Keycode::Num2 => Some(0x2),
         Keycode::Num3 => Some(0x3),
         Keycode::Num4 => Some(0xC),
-        Keycode::Q =>    Some(0x4),
-        Keycode::W =>    Some(0x5),
-        Keycode::E =>    Some(0x6),
-        Keycode::R =>    Some(0xD),
-        Keycode::A =>    Some(0x7),
-        Keycode::S =>    Some(0x8),
-        Keycode::D =>    Some(0x9),
-        Keycode::F =>    Some(0xE),
-        Keycode::Z =>    Some(0xA),
-        Keycode::X =>    Some(0x0),
-        Keycode::C =>    Some(0xB),
-        Keycode::V =>    Some(0xF),
+        Keycode::Q    => Some(0x4),
+        Keycode::W    => Some(0x5),
+        Keycode::E    => Some(0x6),
+        Keycode::R    => Some(0xD),
+        Keycode::A    => Some(0x7),
+        Keycode::S    => Some(0x8),
+        Keycode::D    => Some(0x9),
+        Keycode::F    => Some(0xE),
+        Keycode::Z    => Some(0xA),
+        Keycode::X    => Some(0x0),
+        Keycode::C    => Some(0xB),
+        Keycode::V    => Some(0xF),
         _ =>             None
     }
 }
