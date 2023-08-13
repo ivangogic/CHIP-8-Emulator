@@ -206,10 +206,10 @@ impl Emu {
             (0xA, _, _, _) => {
                 self.i_reg = 0x0FFF & op;
             },
-            (0xB, _, _, 0) => {
+            (0xB, _, _, _) => {
                 self.pc = self.v_reg[0] as u16 + (0x0FFF & op);
             },
-            (0xC, _, _, 0) => {
+            (0xC, _, _, _) => {
                 self.v_reg[digit2 as usize] = random::<u8>() & (0x00FF & op) as u8;
             },
             (0xD, _, _, _) => {
@@ -241,6 +241,11 @@ impl Emu {
             },
             (0xE, _, 9, 0xE) => {
                 if self.keys[digit2 as usize] {
+                    self.pc += 2;
+                }
+            },
+            (0xE, _, 0xA, 1) => {
+                if !self.keys[digit2 as usize] {
                     self.pc += 2;
                 }
             },
