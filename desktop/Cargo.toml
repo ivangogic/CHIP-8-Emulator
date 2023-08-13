@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 chip8_backend = {path = "../chip8_backend"}
+sdl2 = "^0.34.3"

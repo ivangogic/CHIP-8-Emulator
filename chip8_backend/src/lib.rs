@@ -1,5 +1,6 @@
 use rand::random;
 
+
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 
@@ -29,6 +30,7 @@ const FONTSET: [u8; FONTSET_SIZE] = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
     0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 ];
+
 
 pub struct Emu {
     pc: u16,
@@ -62,7 +64,21 @@ impl Emu {
         return new_emu;
     }
 
-    pub fn push(&mut self, val: u16) {
+    pub fn reset(&mut self) {
+        self.pc = START_ADDR;
+        self.ram = [0; RAM_SIZE];
+        self.screen = [false; SCREEN_WIDTH * SCREEN_HEIGHT];
+        self.v_reg = [0; NUM_REGS];
+        self.i_reg = 0;
+        self.sp = 0;
+        self.stack = [0; STACK_SIZE];
+        self.keys = [false; NUM_KEYS];
+        self.dt = 0;
+        self.st = 0;
+        self.ram[..FONTSET_SIZE].copy_from_slice(&FONTSET);
+    }
+
+    fn push(&mut self, val: u16) {
         if self.sp as usize == STACK_SIZE {
             panic!("push");
         }
@@ -70,7 +86,7 @@ impl Emu {
         self.sp += 1;
     }
 
-    pub fn pop(&mut self) -> u16 {
+    fn pop(&mut self) -> u16 {
         if self.sp == 0 {
             panic!("pop");
         }
@@ -187,7 +203,7 @@ impl Emu {
                     self.pc += 2;
                 }
             },
-            (0xA, _, _, 0) => {
+            (0xA, _, _, _) => {
                 self.i_reg = 0x0FFF & op;
             },
             (0xB, _, _, 0) => {
@@ -196,7 +212,7 @@ impl Emu {
             (0xC, _, _, 0) => {
                 self.v_reg[digit2 as usize] = random::<u8>() & (0x00FF & op) as u8;
             },
-            (0xD, _, _, 0) => {
+            (0xD, _, _, _) => {
                 let x_coord = self.v_reg[digit2 as usize];
                 let y_coord = self.v_reg[digit3 as usize];
                 let n_rows = digit4;
@@ -281,5 +297,19 @@ impl Emu {
             },
             (_, _, _, _) => unimplemented!("Unimplemented opcode: {}", op)
         }
+    }
+
+    pub fn get_display(&self) -> &[bool] {
+        return &self.screen;
+    }
+
+    pub fn keypress(&mut self, idx: usize, pressed: bool) {
+        self.keys[idx] = pressed;
+    }
+
+    pub fn load(&mut self, data: &[u8]) {
+        let start = START_ADDR as usize;
+        let end = start + data.len();
+        self.ram[start..end].copy_from_slice(data);
     }
 }
