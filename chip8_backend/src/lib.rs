@@ -137,7 +137,7 @@ impl Emu {
             }
             (2, _, _, _) => {
                 self.push(self.pc);
-                self.pc = 0x0FFF & op; // self.pc = (digit2 << 8) | (digit3 << 4) | digit4;
+                self.pc = 0x0FFF & op;
             }
             (3, _, _, _) => {
                 if self.v_reg[digit2 as usize] == (0x00FF & op) as u8 {
@@ -210,20 +210,20 @@ impl Emu {
                 self.v_reg[digit2 as usize] = random::<u8>() & (0x00FF & op) as u8;
             },
             (0xD, _, _, _) => {
-                let x_coord = self.v_reg[digit2 as usize];
-                let y_coord = self.v_reg[digit3 as usize];
+                let x_coord = self.v_reg[digit2 as usize] as u16;
+                let y_coord = self.v_reg[digit3 as usize] as u16;
                 let n_rows = digit4;
 
                 let mut flipped = false;
-                for line in 0..n_rows {
-                    let addr = self.i_reg + line;
+                for row in 0..n_rows {
+                    let addr = self.i_reg + row;
                     let pixels = self.ram[addr as usize];
 
                     let mask = 0b1000_0000;
-                    for i in 0..8 {
-                        if pixels & (mask >> i) > 0 {
-                            let x = (x_coord + i) as usize % SCREEN_WIDTH;
-                            let y = (y_coord + line as u8) as usize % SCREEN_HEIGHT;
+                    for column in 0..8 {
+                        if pixels & (mask >> column) > 0 {
+                            let x = (x_coord + column) as usize % SCREEN_WIDTH;
+                            let y = (y_coord + row) as usize % SCREEN_HEIGHT;
 
                             let idx = y * SCREEN_WIDTH + x;
 
@@ -273,7 +273,7 @@ impl Emu {
                 self.i_reg = self.i_reg.wrapping_add(self.v_reg[digit2 as usize] as u16);
             },
             (0xF, _, 2, 9) => {
-                self.i_reg = 5 * self.v_reg[digit2 as usize] as u16;
+                self.i_reg = 5 * (self.v_reg[digit2 as usize] as u16);
             },
             (0xF, _, 3, 3) => {
                 let x = self.v_reg[digit2 as usize];
